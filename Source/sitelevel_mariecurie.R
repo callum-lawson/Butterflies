@@ -12,17 +12,11 @@
 # READ IN DATA AND PACKAGES #
 #############################
 
-maindir <- "D:/Users/calluml/Dropbox/PHD/Analyses/BMS"
-# maindir <- "C:/Users/Callum/Dropbox/PHD/Analyses/BMS"
-# maindir <- "D:/Dropbox/PHD/Analyses/BMS"
-setwd(maindir)
-
 ### Packages
 require(reshape2)
 
 ### Site-level data
-
-source("Code/data_processing_functions_20Jan2016.R") # Change to most recent version
+source("Source/data_processing_functions.R") # Change to most recent version
 colform <- c("NULL","factor","factor","factor","integer","integer",rep("NULL",8))
 fullind <- read.csv("Data/ukbms_index.csv",header=T,colClasses=colform)
 names(fullind) <- c("species","brood","site","year","count")
@@ -139,7 +133,6 @@ thom <- sapply(thom,function(x)replace(x,x=="",NA))
 
 # Bivoltine, low number of sites 
 
-
 ###########################################################
 # LOG COUNTS BINNED BY DENSITY AND CATEGORISED BY CLIMATE #
 ###########################################################
@@ -150,8 +143,11 @@ sem <- function(x) sd(x)/sqrt(length(x))
 curdat <- spl[[20]]
 curname <- names(spl)[20]
 climname <- "pretemp8"
-nclim=2
+nclim=3
 ndens=10
+
+colvec <- c("blue","orange","red")
+pchvec <- rep(16,3)
 
 splotbyclim <- function(curdat,curname,climname,nclim=2,ndens=10,incldat=F,thomas=T,axlabs=F,...){
   
@@ -179,8 +175,8 @@ splotbyclim <- function(curdat,curname,climname,nclim=2,ndens=10,incldat=F,thoma
     plotCI(as.numeric(as.character(dencat)),gmeans,
       ui=gmeans+1.96*gses,
       li=gmeans-1.96*gses,
-      pch=ifelse(climcat==climcat[1],16,21),
-      col=ifelse(climcat==climcat[1],"blue","red"),
+      pch=pchvec[as.numeric(climcat)],
+      col=colvec[as.numeric(climcat)],
       gap=0,
       ylab=ifelse(axlabs==T,"r",""),
       xlab=ifelse(axlabs==T,paste0("ln N (",climname,")"),""),
@@ -204,12 +200,11 @@ splotbyclim <- function(curdat,curname,climname,nclim=2,ndens=10,incldat=F,thoma
   
   }
 
-splotbyclim(spl[[13]],which(names(spl)=="Brimstone"),"pretemp8",nclim=2,ndens=10)
+splotbyclim(spl[[13]],which(names(spl)=="Brimstone"),"pretemp8",nclim=3,ndens=10)
 splotbyclim(spl[[46]],which(names(spl)=="Holly Blue"),"pretemp8",nclim=2,ndens=10)
 
-
 ### Inputs
-nclim <- 2
+nclim <- 3
 ndens <- 10 # was 20
 climnames <- paste(rep(c("temp","rain"),each=12),rep(1:12,2),sep="")
 fclimnames <- paste(rep(c("","pre"),times=24),rep(climnames,each=2),sep="")
@@ -221,7 +216,7 @@ denbins <- function(curdat,curname){
   mtext(curname,side=3,cex=2,outer=T)
   }
 
-pdf(paste0("Outputs/binnedgrow_density_",format(Sys.Date(),"%d%b%Y"),".pdf"),
+pdf(paste0("Plots/binnedgrow_density_",format(Sys.Date(),"%d%b%Y"),".pdf"),
   width=13.5,height=18)
 par(mfrow=c(8,6),mar=c(4,4,2,2)+0.1,oma=c(0,0,4,0))
 mapply(denbins,spl,names(spl))
@@ -417,7 +412,7 @@ gtplot <- function(curspd,curtempvar,prelogged=F,...){
 	plot(growvar~curtempvar,
 		data=curspd,
 		ylab=expression(log(lambda)),
-		xlab="mean temperature (°C)",
+		xlab="mean temperature (?C)",
 		las=1,
 		pch=16,
 		...)		
@@ -517,7 +512,7 @@ dplot <- function(curspd,curtempvar,...){
 	plot(log(dens)~curtempvar,
 		data=curspd,
 		ylab=expression(log(bar(Nm^-1))),
-		xlab="mean temperature (°C)",
+		xlab="mean temperature (?C)",
 		las=1,
 		pch=16,
 		...)		
@@ -904,7 +899,7 @@ sepgam <- gam(count ~
 # "scale" forces the scale parameter of the Poisson to be treated 
 # as unknown, and smoothing parameters to be estimated by
 # GCV, rather than UBRE, which is the Poisson default: 
-# hence the model is employing an ‘overdispersed Poisson’ structure
+# hence the model is employing an ?overdispersed Poisson? structure
 
 gam.check(intgam)
 vis.gam(intgam,theta=135,phi=30)
@@ -1005,7 +1000,7 @@ pdf("sss_persp_pretemp8.pdf",width=7,height=7)
 persp(lpdseq,pretemp8seq,plambda3,
 	theta=45,phi=0,
 	xlab="log(N/m)",
-	ylab="Mean Temperature (°C)",
+	ylab="Mean Temperature (?C)",
 	zlab="log(lambda)",
 	col="red",ticktype="detailed")
 dev.off()
@@ -1026,7 +1021,7 @@ matplot(lpdseq,plambda3[,sel],
 	)
 legend("topright",legend=round(pretemp8seq[sel],1),
 	col=1:nlines,lty=rep(1,nlines),
-	bty="n",title="Temperature (°C)")
+	bty="n",title="Temperature (?C)")
 abline(h=0,lty=3,col="orange")
 par(mar=c(0,5,0,2)+0.1,bty="n")
 boxplot(curdat$lpredens,horizontal=T,range=0,col="grey",xaxt="n")
@@ -1305,7 +1300,7 @@ matplot(lpdseq,predmat[,sel],
 	)
 legend("topright",legend=round(climseq[sel],1),
 	col=1:nlines,lty=rep(1,nlines),
-	bty="n",title="Temperature (°C)")
+	bty="n",title="Temperature (?C)")
 abline(h=0,lty=3,col="orange")
 par(mar=c(0,5,0,2)+0.1,bty="n")
 boxplot(curdat$lpredens,horizontal=T,range=0,col="grey",xaxt="n")
@@ -1363,7 +1358,7 @@ richards <- function(x,k1,k2,k3,k4){
 	}
 
 curve(richards((x-15),10,15,1,1),xlim=c(0,30),
-	xlab="Temperature (°C)",
+	xlab="Temperature (?C)",
 	ylab=expression(log(lambda)),
 	las=1)
 
