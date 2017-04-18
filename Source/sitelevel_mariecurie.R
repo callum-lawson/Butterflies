@@ -137,8 +137,11 @@ thom <- sapply(thom,function(x)replace(x,x=="",NA))
 # LOG COUNTS BINNED BY DENSITY AND CATEGORISED BY CLIMATE #
 ###########################################################
 
-sem <- function(x) sd(x)/sqrt(length(x))
-# standard error of the mean
+# Have changed averaging method to MEDIAN
+
+sem <- function(x) 1.253*sd(x)/sqrt(length(x))
+# standard error of the MEDIAN (assumption of normal distribution)
+# http://davidmlane.com/hyperstat/A106993.html
 
 curdat <- spl[[20]]
 curname <- names(spl)[20]
@@ -167,7 +170,7 @@ splotbyclim <- function(curdat,curname,climname,nclim=2,ndens=10,incldat=F,thoma
   #   })
   
   sordat2 <- ddply(curdat2,.(climcat,dencat),function(d){
-    c(gmeans=mean(log(d$growth)),gses=sem(log(d$growth)),climcat=d$climcat[1])
+    c(gmeans=median(log(d$growth)),gses=sem(log(d$growth)),climcat=d$climcat[1])
     })
   # calculate means, sem, and density for each density/temperature class
   
@@ -222,11 +225,11 @@ par(mfrow=c(8,6),mar=c(4,4,2,2)+0.1,oma=c(0,0,4,0))
 mapply(denbins,spl,names(spl))
 dev.off()
 
-pdf(paste0("Outputs/binnedgrow_density_pretemp8_",format(Sys.Date(),"%d%b%Y"),".pdf"),
+pdf(paste0("Plots/binnedgrow_density_pretemp8_",format(Sys.Date(),"%d%b%Y"),".pdf"),
   width=18,height=18)
 par(mfrow=c(8,8),mar=c(4,4,2,2)+0.1,oma=c(0,0,0,0))
 for(i in 1:length(spl)){
-  splotbyclim(spl[[i]],names(spl)[i],climname="pretemp8",main=names(spl)[i])
+  splotbyclim(spl[[i]],names(spl)[i],nclim=3,ndens=10,climname="pretemp8",main=names(spl)[i])
   }
 dev.off()
 
