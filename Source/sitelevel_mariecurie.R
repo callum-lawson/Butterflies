@@ -1157,7 +1157,7 @@ modtab <- dredge(fullmod)
 
 require(mgcv)
 require(MASS)
-curdat <- spl$"Gatekeeper"
+curdat <- spl$"Painted Lady" # "Gatekeeper"
 curdat$tpretemp8 <- with(curdat, pretemp8-mean(pretemp8))
 curdat$tlpredens <- with(curdat, lpredens - mean(lpredens,na.rm=T))
 
@@ -1296,8 +1296,11 @@ lpdvar <- curdat$lpredens
 climname <- "pretemp8"
 
 # Make predictions
-climseq <- seq(min(climvar),max(climvar),length.out=npred)
-lpdseq <- seq(min(lpdvar,na.rm=T),max(lpdvar,na.rm=T),length.out=npred)
+quantseq <- function(x){
+  seq(quantile(x,probs=0.05),quantile(x,probs=0.95),length.out=npred)
+} # 90% quantiles
+climseq <- quantseq(climvar)
+lpdseq <- quantseq(na.omit(lpdvar))
 pframe <- expand.grid(lpredens=lpdseq,climvar=climseq)
 # tlenseq <- rep(1,npred^2)
 pframe$site = names(sort(table(scurdat$site), decreasing=T)[1])
@@ -1331,7 +1334,7 @@ legend("topright",legend=round(climseq[sel],1),
 	bty="n",title="Temperature (?C)")
 abline(h=0,lty=3,col="orange")
 par(mar=c(0,5,0,2)+0.1,bty="n")
-boxplot(curdat$lpredens,horizontal=T,range=0,col="grey",xaxt="n")
+boxplot(curdat$lpredens,horizontal=T,range=0,col="grey",xaxt="n",ylim=range(lpdseq))
 
 layout(matrix(rep(c(1,2),c(20,5)),nc=5,nr=5,byrow=T))
 par(mar=c(4,5,4,2)+0.1)
