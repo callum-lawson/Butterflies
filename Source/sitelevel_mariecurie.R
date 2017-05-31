@@ -920,7 +920,7 @@ curdat <- spl$"Silver-spotted Skipper"
 
 n.seq <- 100
 temp8seq <- with(curdat, seq(min(temp8),max(temp8),length.out=n.seq))
-lpdseq <- with(curdat, seq(min(lpredens),max(lpredens),length.out=n.seq))
+lpdseq <- with(curdat, seq(min(lpredens[is.finite(lpredens)]),max(lpredens[is.finite(lpredens)]),length.out=n.seq))
 temp8seq2 <- rep(temp8seq,each=n.seq)
 lpdseq2 <- rep(lpdseq,times=n.seq)
 
@@ -1262,11 +1262,35 @@ vis.gam(addgamm$gam,view=c("pretemp8","lpredens"),theta=30)#se=1.96
 vis.gam(addgamm$gam,view=c("east","north"),theta=-45)
 gam.check(addgamm$gam)
 
+### Frankfurt work
+
+bigsites <- with(curdat, names(which(tapply(lprecount,site,length)>1)))
+
+scurdat <- subset(curdat,site %in% bigsites)
+scurdat$obslevel <- factor(1:nrow(scurdat)) # can't figure out how to implement this
+scurdat$gridno <- as.factor(as.character(scurdat$gridno))
+scurdat$site <- as.factor(as.character(scurdat$site))
+
+system.time(
+  intgam2 <- gam(count ~ 
+                 te(pretemp8,lpredens)
+                 + s(site,bs="re"),
+                 offset=lprecount,
+                 family=quasipoisson(link=log),
+                 data=scurdat
+  )
+)
+
+vis.gam(intgam2,view=c("pretemp8","lpredens"),theta=135,ticktype="detailed")
+vis.gam(intgam2,view=c("pretemp8","lpredens"),theta=270,ticktype="detailed")
+summary(intgam2)
+gam.check(intgam2)
+
 ### Predictions
 
 # Choose inputs
 npred <- 100
-premod <- intgam
+premod <- intgam2 # intgam
 climvar <- curdat$pretemp8
 lpdvar <- curdat$lpredens
 climname <- "pretemp8"
@@ -1274,12 +1298,11 @@ climname <- "pretemp8"
 # Make predictions
 climseq <- seq(min(climvar),max(climvar),length.out=npred)
 lpdseq <- seq(min(lpdvar,na.rm=T),max(lpdvar,na.rm=T),length.out=npred)
-climseq2 <- rep(climseq,each=npred)
-lpdseq2 <- rep(lpdseq,times=npred)
-tlenseq <- rep(1,npred^2)
-pframe <- data.frame(climvar=climseq2,lpredens=lpdseq2,
-	east=mean(curdat$east),north=mean(curdat$north),
-	tlen=tlenseq)
+pframe <- expand.grid(lpredens=lpdseq,climvar=climseq)
+# tlenseq <- rep(1,npred^2)
+pframe$site = names(sort(table(scurdat$site), decreasing=T)[1])
+	# east=mean(curdat$east),north=mean(curdat$north),
+	# tlen=tlenseq)
 names(pframe)[names(pframe)=="climvar"] <- climname
 
 preds <- predict.gam(premod,pframe,type="link",se.fit=T)
@@ -1289,24 +1312,45 @@ rownames(predmat) <- signif(lpdseq,3)
 colnames(predmat) <- signif(climseq,3)
 
 # 2D plot (could make this into function)
-nlines <- 5
-sel <- seq(0,npred,length.out=nlines)
+require(fields)
+nlines <- 10
+sel <- round(seq(1,npred,length.out=nlines),0)
 layout(matrix(rep(c(1,2),c(20,5)),nc=5,nr=5,byrow=T))
 par(mar=c(4,5,4,2)+0.1)
 matplot(lpdseq,predmat[,sel],
 	type="l",
 	ylab=expression(log(lambda)),
 	xlab=expression(log(Nm^-1)),
+	col=tim.colors(nlines),
 	lty=rep(1,nlines),
 	las=1,
 	bty="n"
 	)
 legend("topright",legend=round(climseq[sel],1),
-	col=1:nlines,lty=rep(1,nlines),
+	col=tim.colors(nlines),lty=rep(1,nlines),
 	bty="n",title="Temperature (?C)")
 abline(h=0,lty=3,col="orange")
 par(mar=c(0,5,0,2)+0.1,bty="n")
 boxplot(curdat$lpredens,horizontal=T,range=0,col="grey",xaxt="n")
+
+layout(matrix(rep(c(1,2),c(20,5)),nc=5,nr=5,byrow=T))
+par(mar=c(4,5,4,2)+0.1)
+matplot(climseq,t(predmat[sel,]),
+        type="l",
+        ylab=expression(log(lambda)),
+        xlab="Temperature (C)",
+        col=tim.colors(nlines),
+        lty=rep(1,nlines),
+        las=1,
+        bty="n"
+)
+legend("topright",legend=round(lpdseq[sel],1),
+       col=tim.colors(nlines),lty=rep(1,nlines),
+       bty="n",title=expression(log(Nm^-1)))
+abline(h=0,lty=3,col="orange")
+par(mar=c(0,5,0,2)+0.1,bty="n")
+boxplot(curdat$pretemp8,horizontal=T,range=0,col="grey",xaxt="n")
+
 
 ### Spatial patterns
 
