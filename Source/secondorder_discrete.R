@@ -33,6 +33,7 @@ legend("center",title="order",legend=c("1","2"),col=mcols,lty=1,bty="n")
 # Variable environment ----------------------------------------------------
 
 nt <- 1000
+set.seed(1)
 eps <- rnorm(nt,0,0.33)
 
 N <- array(dim=c(nt,nm,ns))
@@ -51,10 +52,6 @@ for(i in 1:ns){
 plot(1,1,type="n",bty="n",xaxt="n",yaxt="n")
 legend("center",title="order",legend=c("1","2"),col=mcols,lty=1,bty="n")
 
-par(mfrow=c(1,1))
-i <- 6
-matplot(I(1:nt),log(N[,,i]),type="l",lty=1,col=mcols,main=m1$species[i])
-
 plot(t(apply(log(N),c(2,3),mean)))
 abline(0,1)
 plot(t(apply(log(N),c(2,3),sd)))
@@ -62,3 +59,34 @@ abline(0,1)
   # means quite similar but variance almost always higher when second-order included
 exp(apply(t(apply(log(N),c(2,3),sd)),1,diff))
   # but not *that* much higher - only by around 5-20%
+
+# Multi-lag ---------------------------------------------------------------
+
+m4 <- data.frame(
+  b0 = -0.29702, 
+  b1 = -0.39863, 
+  b2 = 0.15460, 
+  b3 = 0.06117, 
+  b4 = 0.07433
+)
+i <- 6 # Gatekeeper
+Nm <- vector(length=nt)
+Nm[1:4] <- N[1:4,1,i]
+for(t in 5:nt){
+  Nm[t] <- with(m4, Nm[t-1] * exp(b0
+                                  + b1*log(Nm[t-1])
+                                  + b2*log(Nm[t-2]) 
+                                  + b3*log(Nm[t-3]) 
+                                  + b4*log(Nm[t-4]) 
+                                  + eps[t]
+                                  ))
+}
+
+par(mfrow=c(1,1))
+i <- 6
+matplot(I(1:nt),log(N[,,i]),type="l",lty=1,col=mcols,main=m1$species[i])
+lines(log(Nm)~I(1:nt))
+
+mean(log(Nm)) # slightly lower mean (vs -2.770897, -2.781255)
+sd(log(Nm)) # almost identical sd (vs 0.4848969, 0.5559499)
+

@@ -1471,6 +1471,77 @@ write.csv(m2coefs,row.names=F,
 write.csv(m1coefs,row.names=F,
           file=paste0(getwd(),"/Output/secondorder_m1coefs_",format(Sys.Date(),"%d%b%Y"),".csv"))
 
+
+# Third order -------------------------------------------------------------
+
+thirdorder <- function(curdat){
+  multibrood <- with(curdat,T %in% unlist(table(year,site)>1)) 
+  if(multibrood==T){
+    return(NA)
+  }
+  if(multibrood==F){
+    
+    curdat$prevyear1 <- curdat$year - 1
+    curdat$prevyear2 <- curdat$year - 2
+    curdat$prevyear3 <- curdat$year - 3
+    curdat$prevyear4 <- curdat$year - 4
+    
+    newdat <- ddply(curdat, .(site), summarise,
+                    year = year,
+                    site = site,
+                    tlen = tlen,
+                    count = count,
+                    lpredens = lpredens,
+                    lpredens1 = log(dens[match(prevyear1,year)]),
+                    lpredens2 = log(dens[match(prevyear2,year)]),
+                    lpredens3 = log(dens[match(prevyear3,year)]),
+                    lpredens4 = log(dens[match(prevyear4,year)])
+    )
+    
+    subdat <- subset(newdat,
+                     !is.na(lpredens1)
+                     & !is.na(lpredens2) 
+                     & !is.na(lpredens3) 
+                     & !is.na(lpredens4)
+                     )
+    if(nrow(subdat)<3){
+      return(NA)
+    }
+    else{
+      subdat$obslevel <- 1:nrow(subdat)
+      
+      m4 <- glmer(count ~ offset(log(tlen) + lpredens1) 
+                  + (lpredens1) 
+                  + (lpredens2) 
+                  + (lpredens3) 
+                  + (lpredens4) 
+                  + (1|site)
+                  + (1|year)
+                  + (1|obslevel),
+                  family="poisson",
+                  data=subdat
+      )
+      m2 <- glmer(count ~ offset(log(tlen) + lpredens1) 
+                  + (lpredens1) 
+                  + (lpredens2) 
+                  + (1|site)
+                  + (1|year)
+                  + (1|obslevel),
+                  family="poisson",
+                  data=subdat
+      )
+      list(m3=m3,m2=m2,dAIC=diff(AIC(m2,m1)$AIC)) 
+      
+    }
+  }
+}
+
+third <- lapply(spl,thirdorder)
+thirdAIC <- unlist(sapply(third,function(x){
+  if(!(T %in% is.na(x))) 
+    return(x$dAIC)
+}))
+
 #########################
 # DETECTABILITY EXAMPLE #
 #########################
