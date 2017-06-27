@@ -1408,7 +1408,7 @@ secondorder <- function(curdat){
     subdat <- subset(newdat,!is.na(lpredens1) & !is.na(lpredens2))
     subdat$obslevel <- 1:nrow(subdat)
     
-    m12 <- glmer(count ~ offset(log(tlen) + lpredens1) 
+    m2 <- glmer(count ~ offset(log(tlen) + lpredens1) 
                  + (lpredens1) 
                  + (lpredens2) 
                  + (1|site)
@@ -1425,12 +1425,26 @@ secondorder <- function(curdat){
                 family="poisson",
                 data=subdat
     )
-    return(diff(AIC(m12,m1)$AIC)) 
+    list(m2=m2,m1=m1,dAIC=diff(AIC(m2,m1)$AIC)) 
   }
 }
 
-secondorder(spl[[4]])
+m2
+
+t1 <- evaluate("test(1)")
+
+
 second <- lapply(spl,secondorder)
+secondAIC <- unlist(sapply(second,function(x){
+  if(!(T %in% is.na(x))) 
+    return(x$dAIC)
+  }))
+secondwarn <- unlist(sapply(second,function(x){
+  if(!(T %in% is.na(x))) 
+    return(length(x$m2@optinfo$conv$lme4$messages))
+}))
+hist(secondAIC[secondwarn==0],breaks=1000)
+abline(v=2,col="red")
 
 #########################
 # DETECTABILITY EXAMPLE #
