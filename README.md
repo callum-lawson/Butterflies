@@ -18,4 +18,4 @@ Stored runs of population simulations.
 
 ## Source
 R code 
-* example.R: describe role here [and match to file blurb]
+* secondorder_discrete.R: Simulations of second-order discrete population dynamics based on BMS parameters.

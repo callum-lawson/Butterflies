@@ -1383,7 +1383,6 @@ persp(eseq,nseq,predmat,theta=45,phi=30) # double-check that axis vars are right
 
 require(lme4)
 require(plyr)
-curdat <- spl[[4]]
 
 secondorder <- function(curdat){
   multibrood <- with(curdat,T %in% unlist(table(year,site)>1)) 
@@ -1429,11 +1428,6 @@ secondorder <- function(curdat){
   }
 }
 
-m2
-
-t1 <- evaluate("test(1)")
-
-
 second <- lapply(spl,secondorder)
 secondAIC <- unlist(sapply(second,function(x){
   if(!(T %in% is.na(x))) 
@@ -1445,6 +1439,37 @@ secondwarn <- unlist(sapply(second,function(x){
 }))
 hist(secondAIC[secondwarn==0],breaks=1000)
 abline(v=2,col="red")
+
+m2coefs <- as.data.frame(t(sapply(second, function(x){
+  if(!(T %in% is.na(x))){
+    fixef(x$m2)
+  }
+  else{
+    rep(NA,3)
+  }
+})))
+names(m2coefs) <- c("b0","b1","b2")
+m2coefs$species <- row.names(m2coefs)
+m2coefs$warn <- secondwarn[match(m2coefs$species,names(secondwarn))]
+
+m1coefs <- as.data.frame(t(sapply(second, function(x){
+  if(!(T %in% is.na(x))){
+    fixef(x$m1)
+  }
+  else{
+    rep(NA,2)
+  }
+})))
+names(m1coefs) <- c("b0","b1")
+m1coefs$species <- row.names(m1coefs)
+m1coefs$warn <- secondwarn[match(m1coefs$species,names(secondwarn))]
+
+# as.data.frame(VarCorr(x$m2))$sdcor
+
+write.csv(m2coefs,row.names=F,
+          file=paste0(getwd(),"/Output/secondorder_m2coefs_",format(Sys.Date(),"%d%b%Y"),".csv"))
+write.csv(m1coefs,row.names=F,
+          file=paste0(getwd(),"/Output/secondorder_m1coefs_",format(Sys.Date(),"%d%b%Y"),".csv"))
 
 #########################
 # DETECTABILITY EXAMPLE #
