@@ -242,7 +242,6 @@ for(i in 1:length(spl)){
   }
 dev.off()
 
-
 ### MARIE-CURIE FIGURES
 
 xrange <- c(-8.5,-1.5)
@@ -1379,6 +1378,59 @@ predmat <- matrix(preds$fit,nc=npred,byrow=F)
 
 # 3D plot
 persp(eseq,nseq,predmat,theta=45,phi=30) # double-check that axis vars are right
+
+# Estimating order --------------------------------------------------------
+
+require(lme4)
+require(plyr)
+curdat <- spl[[4]]
+
+secondorder <- function(curdat){
+  multibrood <- with(curdat,T %in% unlist(table(year,site)>1)) 
+  if(multibrood==T){
+    return(NA)
+  }
+  if(multibrood==F){
+    
+    curdat$prevyear1 <- curdat$year - 1
+    curdat$prevyear2 <- curdat$year - 2
+    
+    newdat <- ddply(curdat, .(site), summarise,
+                    year = year,
+                    site = site,
+                    tlen = tlen,
+                    count = count,
+                    lpredens = lpredens,
+                    lpredens1 = log(dens[match(prevyear1,year)]),
+                    lpredens2 = log(dens[match(prevyear2,year)])
+    )
+    
+    subdat <- subset(newdat,!is.na(lpredens1) & !is.na(lpredens2))
+    subdat$obslevel <- 1:nrow(subdat)
+    
+    m12 <- glmer(count ~ offset(log(tlen) + lpredens1) 
+                 + (lpredens1) 
+                 + (lpredens2) 
+                 + (1|site)
+                 + (1|year)
+                 + (1|obslevel),
+                 family="poisson",
+                 data=subdat
+    )
+    m1 <- glmer(count ~ offset(log(tlen) + lpredens1) 
+                + (lpredens1) 
+                + (1|site)
+                + (1|year)
+                + (1|obslevel),
+                family="poisson",
+                data=subdat
+    )
+    return(diff(AIC(m12,m1)$AIC)) 
+  }
+}
+
+secondorder(spl[[4]])
+second <- lapply(spl,secondorder)
 
 #########################
 # DETECTABILITY EXAMPLE #
