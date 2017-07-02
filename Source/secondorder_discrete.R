@@ -88,5 +88,5 @@ matplot(I(1:nt),log(N[,,i]),type="l",lty=1,col=mcols,main=m1$species[i])
 lines(log(Nm)~I(1:nt))
 
 mean(log(Nm)) # slightly lower mean (vs -2.770897, -2.781255)
-sd(log(Nm)) # almost identical sd (vs 0.4848969, 0.5559499)
+sd(log(Nm)) # almost identical sd to 2-lag model (vs 0.4848969, 0.5559499)
 
