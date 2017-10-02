@@ -1,42 +1,37 @@
-# Pair UKCP09 data with site indices
+### Pair UKCP09 data with site indices ###
 
 site <- read.csv("Data/ukbms_site.csv",header=T)
-site <- subset(site, !is.na(LATITUDE) & !is.na(LATITUDE))
+site <- subset(site, !is.na(LATITUDE) & !is.na(LONGITUDE))
 
-### Convert UKBMS lat / long to UTM
+# Convert lat-long to BNG -------------------------------------------------
 
 require(rgdal)
-mrc = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs'
-coordinates(site) <- c("LONGITUDE","LATITUDE")
-wgs84 = '+proj=longlat +datum=WGS84'
-bng = '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs'
-mrc = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs'
-site@proj4string   # slot will be empty
-site@proj4string = CRS(wgs84)
-
-site_merc = spTransform(site, CRS(mrc)) # reproject data to Mercator coordinate system
-bbox = site@bbox # download Mercator tiles covering the data area
-site_bng = spTransform(site, CRS(bng)) # conversion to British National Grid (OSGB36)
+site_rg <- site
+coordinates(site_rg) <- c("LONGITUDE","LATITUDE")
+wgs84 <- '+proj=longlat +datum=WGS84'
+bng <- '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs'
+site_rg@proj4string = CRS(wgs84)
+site_bng = spTransform(site_rg, CRS(bng)) 
+  # conversion to British National Grid (OSGB36)
 
 site$EAST <- site_bng@coords[,1]
 site$NORTH <- site_bng@coords[,2]
 
-# supposed to be 543000	110700
-
 # http://blogs.casa.ucl.ac.uk/2013/12/05/british-national-grid-transformation-and-reprojection-in-r/
 
-### Convert UKBMS site 1km coordinates to 5km references (rounding)
+# Convert UKBMS site 1km coordinates to 5km references --------------------
 
 for(i in 1:length(site$EAST)){
 	ifelse(site$EAST[i]%%10000<5000,y<-2500,y<-7500)
 	site$E5[i]<-(site$EAST[i]%/%10000)*10000+y
-	}
+}
 for(i in 1:length(site$NORTH)){
 	ifelse(site$NORTH[i]%%10000<5000,y<-2500,y<-7500)
 	site$N5[i]<-(site$NORTH[i]%/%10000)*10000+y
-	}	
+}	
+  # coordinates at centre points of grid
 
-### Climate extraction function
+# Climate extraction function ---------------------------------------------
 
 climextract <- function(climname,ymin=1970){
 
@@ -87,7 +82,7 @@ climextract <- function(climname,ymin=1970){
 
 	}
 
-### Create and write files
+# Extract climate data ----------------------------------------------------
 
 # Temperature
 system.time(
@@ -102,16 +97,38 @@ system.time(
 # Combined Temperature and Rain
 
 all <- merge(temp,rain)
+names(all) <- tolower(names(all))
+all <- subset(all, select=!names(all) %in% c("e5","n5"))
 
-write.table(final.all,"all.site.CIP.mean.tempANDrainfall.1971_2012.txt",
-	sep="\t",row.names=F)
+library(plyr)
+all <- rename(all, c(
+  "latitude"="lat",
+  "longitude"="long",
+  "mean-temperature"="temp",
+  "rainfall"="rain"
+  ))
 
-remove(final.temps)
-remove(final.temps2)
-remove(final.rain)
-remove(final.rain2)
-remove(final.all)
-gc()
+write.table(all,
+            file=paste0("Output/UKCP09_",format(Sys.Date(),"%d%b%Y"),".txt"),
+            row.names=F
+            )
+
+# Checks for consistency with 2013 data -----------------------------------
+
+site0 <- read.csv("Data/2013/ukbms_site.csv",header=T)
+names(site0)[names(site0)=="SITENO"] <- "SITE"
+sitem <- merge(site,site0,by="SITE",all.x=F,all.y=F)
+summary(sitem$NORTH.y-sitem$NORTH.x)
+summary(sitem$EAST.y-sitem$EAST.x)
+plot(sitem$EAST.y,sitem$NORTH.y,col="red",pch="+")
+points(sitem$EAST.x,sitem$NORTH.x,pch="+")
+  # lat and long are equivalent, so must be difference in transformation
+
+all0 <- read.table("Data/2013/all.sites.CIP.mean.tempANDrainfall.1971_2012.txt",header=T)
+
+allm <- merge(all,all0,by=c("site","year","month"))
+summary(allm$temp-allm$mean.temp)
+summary(allm$rain-allm$rainfall)
 
 ### Read in ready-made files
 #final.temps <- as.data.table(read.table("all.site.CIP.mean.temp.1971_2012.txt",header=T)) 
