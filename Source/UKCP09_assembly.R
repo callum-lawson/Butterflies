@@ -1,7 +1,8 @@
 ### Pair UKCP09 data with site indices ###
 
 site <- read.csv("Data/ukbms_site.csv",header=T)
-site <- subset(site, !is.na(LATITUDE) & !is.na(LONGITUDE))
+site <- subset(site, !is.na(LATITUDE) & !is.na(LONGITUDE) & !duplicated(site))
+  # one site was entered twice
 
 # Convert lat-long to BNG -------------------------------------------------
 
@@ -95,11 +96,9 @@ system.time(
 	)
 
 # Combined Temperature and Rain
-
 all <- merge(temp,rain)
 names(all) <- tolower(names(all))
 all <- subset(all, select=!names(all) %in% c("e5","n5"))
-
 library(plyr)
 all <- rename(all, c(
   "latitude"="lat",
