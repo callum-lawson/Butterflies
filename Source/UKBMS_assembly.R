@@ -16,17 +16,17 @@ ind <- subset(fullind,count>=0 & year>=1976) # gets rid of other count codes
 # also exclude sites above 10000?
 
 ### SITE DATA AND UKCP09
-mc <- read.table("Output/UKCP09_02Oct2017.txt",header=T)
+mc <- read.table("Output/UKCP09_04Oct2017.txt",header=T)
 mc$site <- as.factor(mc$site)
-mc <- subset(mc, select=c("site","east","north","year","month","temp","rain"))
-mmc <- melt(mc,id=c("site","east","north","year","month"))
-cmc <- dcast(mmc, site + east + north + year ~ variable + month)
+mc <- subset(mc, select=c("site","tlen","east","north","year","month","temp","rain"))
+mmc <- melt(mc,id=c("site","tlen","east","north","year","month"))
+cmc <- dcast(mmc, site + tlen + east + north + year ~ variable + month)
 names(cmc) <- gsub("_", "", names(cmc))
 
 indm <- merge(ind,cmc,by=c("site","year"))
 
 # table(levels(ind2$site) %in% levels(cmc$site))
-# 	sites are missing from climate data, but seem to be filled in incorrectly
+# 	65/1988 sites are missing from climate data, but seem to be filled in incorrectly
 
 # List data by species ----------------------------------------------------
 
@@ -45,14 +45,15 @@ spi$species <- as.factor(spi$species)
 
 ### Create list of species subsets
 
-	# using spi because more species
-splist.full <- levels(spi$common_name)
-enoughcounts <- with(indm,tapply(count,species,function(x) sum(x,na.rm=T)))>100
-	 # at least 100 counts to include
-keepspecies <- levels(indm$species)[!is.na(enoughcounts) & enoughcounts==T]
+splist.full <- levels(indm$species)
+inspi <- levels(indm$species) %in% levels(spi$species)
+  # some species in indm are missing from spi
+enoughcounts <- sapply(split(indm,indm$species),nrow) > 100
+	 # at least 100 count records to include
+keepspecies <- levels(indm$species)[inspi & !is.na(enoughcounts) & enoughcounts==T]
 	# BMS codes of species to keep
-matchspeciesnames <- spi$common_name[match(keepspecies,spi$BMScode)]
-keepspeciesnames <- na.omit(matchspeciesnames)
+keepspeciesnames <- spi$common_name[match(keepspecies,levels(spi$species))]
+nspecies <- length(keepspecies)
 
 ### Split by brood
 
@@ -66,27 +67,20 @@ names(twobroods) <- names(broodlist)[!sapply(broodlist,is.null)]
 
 ### Create species datasets
 
-splist <- splist.full[splist.full %in% keepspeciesnames]
-tblist <- twobroods[names(twobroods) %in% keepspecies[!is.na(matchspeciesnames)]]
+splist <- as.numeric(splist.full[splist.full %in% keepspecies])
+tblist <- twobroods[names(twobroods) %in% keepspecies]
 #usebrood <- splist[splist.full %in% keepspeciesnames]
 
-spl <- list()
-for(s in 1:length(splist)){
-	spno <- spi$BMScode[spi$common_name==splist[s]] # species number
-	if(!spno %in% indm$species) next
-	spd <- droplevels(subset(indm,species==spno))
-	spd2 <- dataprep(spd,spno,sitevis,brood=tblist[s])
+spl <- as.list(rep(NA,nspecies))
+names(spl) <- keepspeciesnames
+for(i in 1:length(splist)){
+	spd <- droplevels(subset(indm,species==splist[i]))
+	spd2 <- dataprep(spd,splist[i],sitevis,brood=tblist[i])
 	#spd2 <- subcounts(spd2,taucounts=2,tauyears=15) # exclude low counts
 	spd3 <- subset(spd2,is.finite(growth)) # exclude extinctions?
 		# Remove "colonisations" but not "extinctions"
-	spl[[s]] <-  droplevels(spd3)
+	spl[[i]] <-  droplevels(spd3)
 	}
-names(spl) <- splist
-
-### select only datasets with a sufficient number of records:
-
-datapresent <- lapply(spl,function(x) nrow(x)>100) 
-spl <- spl[unlist(datapresent)]
 
 #splitbrood <- function(mydata){ split(mydata,mydata$brood) }
 #splb <- lapply(spl,splitbrood)

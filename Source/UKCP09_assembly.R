@@ -103,6 +103,7 @@ library(plyr)
 all <- rename(all, c(
   "latitude"="lat",
   "longitude"="long",
+  "length"="tlen",
   "mean-temperature"="temp",
   "rainfall"="rain"
   ))
